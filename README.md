@@ -21,7 +21,7 @@
 
 3) systemctl daemon-reload ; systemctl restart moonbeam.service
 
-Now you **must** wait until we have logs for a complete round. Anything less than a full round of logs will simply generate error messages and inaccurate results.  So if you enable logging in round X, you must wait until round x+1 is completed. Then you can view the success rates for round x+1.
+Now you **MUST** wait until we have logs for a complete round. Anything less than a full round of logs will simply generate error messages and inaccurate results.  So if you enable logging in round X, you must wait until round x+1 is completed. Then you can view the success rates for round x+1.
 
 Usage moonbeam_round_success.sh <round#>
 
