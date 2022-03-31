@@ -2,21 +2,10 @@
 
 TMP_FILE=$(date +%s | md5sum | grep -Eo [0-9a-z]{17})
 
-if ! which bc 2>/dev/null
-    then
-        echo "please install bc"
-        exit;
-fi
-if ! which jq 2>/dev/null
-    then
-        echo "please install jq"
-        exit;
-fi
-
 if ! echo $1 | grep -q [0-9]
 then
-	echo "usage: moonbeam_round_success.sh <round> "
-	exit;
+	echo "usage: round_success.sh <round> "
+	exit
 fi
 
 get_author() {
@@ -41,17 +30,19 @@ echo "Round $ROUND begins with block $MIN_BLOCK at $START and ends with block $M
 MINE=0
 TOTAL=0
 
-declare -A COLLATOR_PRIMARY  #array for primary slots
-declare -A COLLATOR_SECONDARY #array for secondary slots
-declare -A COLLATOR_SUCCESS #array for block success
+declare -A COLLATOR_PRIMARY_SUCCESS  #array for primary slots
+declare -A COLLATOR_PRIMARY_FAIL  #array for primary slots
+declare -A COLLATOR_SECONDARY_SUCCESS #array for secondary slots
+declare -A COLLATOR_SECONDARY_FAIL #array for secondary slots
 COLLATORS=($(cat $TMP_FILE | grep Eligible | grep -Eo [0-9a-z]{42} | sort -u ))
 
 #initialze arrays
 for collator in ${COLLATORS[@]}
 do
-	COLLATOR_PRIMARY[$collator]=0
-	COLLATOR_SECONDARY[$collator]=0
-	COLLATOR_SUCCESS[$collator]=0
+	COLLATOR_PRIMARY_SUCCESS[$collator]=0
+	COLLATOR_PRIMARY_FAIL[$collator]=0
+	COLLATOR_SECONDARY_SUCCESS[$collator]=0
+	COLLATOR_SECONDARY_FAIL[$collator]=0
 done
 
 #get primary chances
@@ -59,26 +50,48 @@ for ((c=$MIN_BLOCK; c<=$MAX_BLOCK; c++))
 do
 
 #comment to disable display progress on the console
-    echo -ne "$c"'\r'
+echo -ne "$c"'\r'
 
 	tmp=$(cat $TMP_FILE | grep 'Imported\|Eligible' | grep -B1 "Imported \#$c" | grep -v Imported | head -n 1 | grep -Eo [0-9a-z]{42})
-	(( COLLATOR_PRIMARY[$tmp]++ ))
+#	(( COLLATOR_PRIMARY[$tmp]++ ))
+	BLOCK=$c
+	get_author
+	if echo $AUTHOR | grep -qi $tmp
+	then
+		(( COLLATOR_PRIMARY_SUCCESS[$tmp]++ ))
+	else
+		(( COLLATOR_PRIMARY_FAIL[$tmp]++ ))
+	fi
 # get secondary chances right here (easy to exclude the primary opportunities)
 	for i in `cat $TMP_FILE | grep 'Imported\|Eligible' | grep -B1 "Imported \#$c" | grep -v Imported | grep -v $tmp | grep -Eo [0-9a-z]{42}`; do
-		(( COLLATOR_SECONDARY[$i]++ ))
+		if echo $AUTHOR | grep -qi $i
+		then
+			(( COLLATOR_SECONDARY_SUCCESS[$i]++ ))
+		else
+			(( COLLATOR_SECONDARY_FAIL[$i]++ ))
+		fi
 	done
-    BLOCK=$c
-	get_author
-	(( COLLATOR_SUCCESS[$AUTHOR]++ ))
 done
-echo "Collator, success rate, primary chances, total success"
+echo "Collator, primary success rate, primary chances, primary fails, secondary success rate, secondary chances, secondary fails, total round blocks"
 for collator in ${COLLATORS[@]}
 do
-    P_CHANCES=${COLLATOR_PRIMARY[$collator]}
-    S_CHANCES=${COLLATOR_SECONDARY[$collator]}
-    HITS=${COLLATOR_SUCCESS[$collator]}
-    SUCCESS=$(echo "scale=2;($HITS / $P_CHANCES)*100" | bc | cut -f 1 -d ".")
+	P_CHANCES=$(echo "scale=2; (${COLLATOR_PRIMARY_SUCCESS[$collator]} + ${COLLATOR_PRIMARY_FAIL[$collator]})" | bc |cut -f 1 -d ".")
+	S_CHANCES=$( echo "scale=2; (${COLLATOR_SECONDARY_SUCCESS[$collator]} + ${COLLATOR_SECONDARY_FAIL[$collator]})" | bc |cut -f 1 -d ".")
+#HITS=${COLLATOR_SUCCESS[$collator]}
 
-    echo "$collator,$SUCCESS%,$P_CHANCES,$HITS"
+	if [[ ${COLLATOR_PRIMARY_SUCCESS[$collator]} > 0 ]]
+	then
+		PRIMARY_SUCCESS_RATE=$(echo "scale=2; (${COLLATOR_PRIMARY_SUCCESS[$collator]} / $P_CHANCES)*100" | bc | cut -f 1 -d ".")
+	else
+		PRIMARY_SUCCESS_RATE=0
+	fi
+	if [[ ${COLLATOR_SECONDARY_SUCCESS[$collator]} > 0 ]]
+	then
+		SECONDARY_SUCCESS_RATE=$(echo "scale=2; (${COLLATOR_SECONDARY_SUCCESS[$collator]} / $S_CHANCES)*100" | bc | cut -f 1 -d ".")
+	else
+		SECONDARY_SUCCESS_RATE=0
+	fi
+	TOTAL_SUCCESS=$(echo "scale=2; (${COLLATOR_PRIMARY_SUCCESS[$collator]} + ${COLLATOR_SECONDARY_SUCCESS[$collator]})" | bc | cut -f 1 -d ".")
+	echo "$collator,$PRIMARY_SUCCESS_RATE%,$P_CHANCES,${COLLATOR_PRIMARY_FAIL[$collator]},$SECONDARY_SUCCESS_RATE%,$S_CHANCES,${COLLATOR_SECONDARY_FAIL[$collator]},$TOTAL_SUCCESS"
 done
 rm -f $TMP_FILE
