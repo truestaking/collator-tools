@@ -11,7 +11,7 @@ fi
 get_author() {
 HEX=$(echo "obase=16; $BLOCK" | bc)
 DATA="{\"jsonrpc\":\"2.0\",\"method\":\"eth_getBlockByNumber\",\"params\":[\"0x$HEX\", true],\"id\":1}"
-AUTHOR=$(curl --silent -X POST --data  "$DATA" --header 'Content-Type: application/json' localhost:9933 | jq '.result.author' )
+AUTHOR=$(curl --silent -X POST --data  "$DATA" --header 'Content-Type: application/json' localhost:9933 | jq '.result.author' | sed 's/\"//g' )
 }
 
 ROUND=$1
@@ -63,7 +63,7 @@ echo -ne "$c"'\r'
 		(( COLLATOR_PRIMARY_FAIL[$tmp]++ ))
 	fi
 # get secondary chances right here (easy to exclude the primary opportunities)
-	for i in `cat $TMP_FILE | grep 'Imported\|Eligible' | grep -B1 "Imported \#$c" | grep -v Imported | grep -v $tmp | grep -Eo [0-9a-z]{42}`; do
+	for i in `cat $TMP_FILE | grep 'Imported\|Eligible' | grep -B1 "Imported \#$c" | grep -v Imported | grep -v $tmp | grep -Eo [0-9a-z]{42} | sort -u `; do
 		if echo $AUTHOR | grep -qi $i
 		then
 			(( COLLATOR_SECONDARY_SUCCESS[$i]++ ))
