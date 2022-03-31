@@ -10,7 +10,7 @@
 
   moonbeam_round_success.sh 
 
--- runs on backup or primary collator, uses journalctl to pull out just the log entries we want, identifies both primary block chances and secondary block chances.
+-- runs on backup or primary collator, uses journalctl to pull out just the log entries we want, identifies both primary block chances and secondary block chances. Assumes you are running the service from systemd with name of moonbeam.service .
 
 1) Add these two log lines in the parachain portion of your moonbeam.service file:
 
