@@ -14,8 +14,8 @@
 
 1) Add these two log lines in the parachain portion of your moonbeam.service file:
 
-  --log rpc=info \\
-  --tracing-targets author-filter=debug \
+  ```--log rpc=info \
+  ```--tracing-targets author-filter=debug \
 
 2) you must install jq and bc (you will be prompted if you have not installed these utilities)
 
