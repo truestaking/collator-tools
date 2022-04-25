@@ -13,10 +13,10 @@
 -- runs on backup or primary collator, uses journalctl to pull out just the log entries we want, identifies both primary block chances and secondary block chances. Assumes you are running the service from systemd with name of moonbeam.service .
 
 1) Add these two log lines in the parachain portion of your moonbeam.service file:
-
-  ```--log rpc=info \
-  ```--tracing-targets author-filter=debug \
-
+```
+  --log rpc=info \
+  --tracing-targets author-filter=debug \
+```
 2) you must install jq and bc (you will be prompted if you have not installed these utilities)
 
 3) systemctl daemon-reload ; systemctl restart moonbeam.service
